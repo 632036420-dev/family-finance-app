@@ -1,15 +1,12 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".vercel/output",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/index.html"
-    }
+  "version": 2,
+  "builds": [
+    { "src": "static/**/*", "use": "@vercel/static" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/static/index.html" }
   },
   "env": {
     "DASHSCOPE_API_KEY": "@dashscope_api_key"
