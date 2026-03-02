@@ -12,7 +12,6 @@ class FamilyFinanceApp {
         this.setupEventListeners();
         this.drawScoreCircle();
         this.initCharts();
-        this.loadMockData();
     }
 
     loadSettings() {
@@ -129,6 +128,10 @@ class FamilyFinanceApp {
 
         if (page === 'settings') {
             this.loadSettingsToUI();
+        } else if (page === 'overview') {
+            this.updateCharts();
+        } else if (page === 'details') {
+            this.renderDetailsList();
         }
     }
 
@@ -217,6 +220,7 @@ class FamilyFinanceApp {
                 this.detailsData.push(...result.expenses);
                 this.images = [];
                 this.renderPreview();
+                this.updateCharts();
                 this.showToast('识别成功！');
                 this.switchPage('overview');
             } else {
@@ -266,12 +270,18 @@ class FamilyFinanceApp {
         canvas.width = rect.width;
         canvas.height = rect.height;
 
-        const data = [
-            { label: '餐饮', value: 40, color: '#d4a574' },
-            { label: '出行', value: 25, color: '#e8b8a0' },
-            { label: '购物', value: 20, color: '#f5d5b8' },
-            { label: '娱乐', value: 15, color: '#f0e6d2' }
-        ];
+        const categoryMap = {};
+        this.detailsData.forEach(item => {
+            const cat = item.category || '其他';
+            categoryMap[cat] = (categoryMap[cat] || 0) + item.amount;
+        });
+
+        const total = Object.values(categoryMap).reduce((a, b) => a + b, 1);
+        const data = Object.entries(categoryMap).map(([label, amount], idx) => ({
+            label,
+            value: Math.round((amount / total) * 100),
+            color: ['#d4a574', '#e8b8a0', '#f5d5b8', '#f0e6d2'][idx % 4]
+        }));
 
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
@@ -309,13 +319,19 @@ class FamilyFinanceApp {
         canvas.width = rect.width;
         canvas.height = rect.height;
 
-        // 模拟数据：7天的消费额
-        const data = [150, 180, 120, 200, 160, 140, 190];
-        const maxValue = Math.max(...data);
+        const dayMap = {};
+        this.detailsData.forEach(item => {
+            const dateStr = (item.date || '').split(' ')[0];
+            dayMap[dateStr] = (dayMap[dateStr] || 0) + item.amount;
+        });
+
+        const dates = Object.keys(dayMap).sort();
+        const data = dates.length > 0 ? dates.map(d => dayMap[d]) : [0];
+        const maxValue = Math.max(...data, 1);
         const padding = 30;
         const graphWidth = canvas.width - padding * 2;
         const graphHeight = canvas.height - padding * 2;
-        const pointSpacing = graphWidth / (data.length - 1);
+        const pointSpacing = data.length > 1 ? graphWidth / (data.length - 1) : graphWidth / 2;
 
         // 绘制坐标轴
         ctx.strokeStyle = '#e0d4c4';
@@ -350,111 +366,90 @@ class FamilyFinanceApp {
             ctx.fill();
         });
 
-        // 绘制日期标签
-        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
         ctx.fillStyle = '#999';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        days.forEach((day, index) => {
-            const x = padding + index * pointSpacing;
-            ctx.fillText(day, x, canvas.height - padding + 15);
+        const displayDates = dates.length > 0 ? dates : ['暂无'];
+        displayDates.slice(0, 7).forEach((dateStr, index) => {
+            const x = padding + index * (graphWidth / Math.max(displayDates.length - 1, 1));
+            ctx.fillText(dateStr.slice(5), x, canvas.height - padding + 15);
         });
     }
 
-    switchReport(reportType) {
-        document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`[data-report="${reportType}"]`).classList.add('active');
+    generateReportContent(reportType) {
+        const totalExpense = this.detailsData.reduce((sum, item) => sum + item.amount, 0);
+        const budget = this.settings.monthlyBudget || 5000;
+        const remaining = budget - totalExpense;
+        const completion = totalExpense > 0 ? Math.round((totalExpense / budget) * 100) : 0;
+
+        const safeRate = Math.max(0, 100 - completion);
+        const savingsTarget = this.settings.monthlyIncome * 0.2 || 2000;
+        const savings = Math.max(0, this.settings.monthlyIncome - totalExpense);
 
         const contents = {
             budget: `
                 <div class="report-item">
                     <div class="report-row">
                         <span class="report-label">预算额度</span>
-                        <span class="report-value">5000 元</span>
+                        <span class="report-value">${budget} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
                         <span class="report-label">已用</span>
-                        <span class="report-value">3200 元</span>
+                        <span class="report-value">${totalExpense.toFixed(2)} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
                         <span class="report-label">剩余</span>
-                        <span class="report-value">1800 元</span>
+                        <span class="report-value">${remaining.toFixed(2)} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
                         <span class="report-label">完成率</span>
-                        <span class="report-value">64%</span>
-                    </div>
-                </div>
-            `,
-            weekly: `
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">第1周</span>
-                        <span class="report-value">1200 元</span>
-                    </div>
-                </div>
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">第2周</span>
-                        <span class="report-value">850 元</span>
-                    </div>
-                </div>
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">第3周</span>
-                        <span class="report-value">980 元</span>
-                    </div>
-                </div>
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">第4周</span>
-                        <span class="report-value">170 元</span>
+                        <span class="report-value">${completion}%</span>
                     </div>
                 </div>
             `,
             monthly: `
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">1月</span>
-                        <span class="report-value">4800 元</span>
+                        <span class="report-label">本月支出</span>
+                        <span class="report-value">${totalExpense.toFixed(2)} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">2月</span>
-                        <span class="report-value">5200 元</span>
+                        <span class="report-label">预算对比</span>
+                        <span class="report-value">${completion}% 完成</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">3月</span>
-                        <span class="report-value">4500 元（本月）</span>
+                        <span class="report-label">记录条数</span>
+                        <span class="report-value">${this.detailsData.length} 条</span>
                     </div>
                 </div>
             `,
             forecast: `
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">下周预计</span>
-                        <span class="report-value">950 元</span>
+                        <span class="report-label">日均支出</span>
+                        <span class="report-value">${this.detailsData.length > 0 ? (totalExpense / this.detailsData.length).toFixed(2) : '0'} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">下月预计</span>
-                        <span class="report-value">5100 元</span>
+                        <span class="report-label">预测月底支出</span>
+                        <span class="report-value">${this.detailsData.length > 0 ? (totalExpense / this.detailsData.length * 30).toFixed(2) : '0'} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">预测趋势</span>
-                        <span class="report-value">📈 上升</span>
+                        <span class="report-label">风险评级</span>
+                        <span class="report-value">${safeRate >= 20 ? '安全 ✓' : '紧张 ！'}</span>
                     </div>
                 </div>
             `,
@@ -468,19 +463,43 @@ class FamilyFinanceApp {
                 <div class="report-item">
                     <div class="report-row">
                         <span class="report-label">月储蓄目标</span>
-                        <span class="report-value">2000 元</span>
+                        <span class="report-value">${savingsTarget.toFixed(2)} 元</span>
                     </div>
                 </div>
                 <div class="report-item">
                     <div class="report-row">
-                        <span class="report-label">本月储蓄</span>
-                        <span class="report-value">1500 元</span>
+                        <span class="report-label">预计本月储蓄</span>
+                        <span class="report-value">${savings.toFixed(2)} 元</span>
                     </div>
+                </div>
+            `,
+            category: `
+                <div class="report-item">
+                    ${this.detailsData.length > 0 ? 
+                        Object.entries(
+                            this.detailsData.reduce((m, item) => {
+                                const cat = item.category || '其他';
+                                m[cat] = (m[cat] || 0) + item.amount;
+                                return m;
+                            }, {})
+                        ).map(([cat, amount]) => `
+                        <div class="report-row">
+                            <span class="report-label">${cat}</span>
+                            <span class="report-value">${amount.toFixed(2)} 元</span>
+                        </div>
+                        `).join('') 
+                    : '<p style="color:#999;">暂无数据</p>'}
                 </div>
             `
         };
 
-        document.getElementById('reportContent').innerHTML = contents[reportType];
+        return contents[reportType] || contents.budget;
+    }
+
+    switchReport(reportType) {
+        document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`[data-report="${reportType}"]`).classList.add('active');
+        document.getElementById('reportContent').innerHTML = this.generateReportContent(reportType);
     }
 
     filterDetails(category) {
@@ -491,12 +510,33 @@ class FamilyFinanceApp {
         // 这里仅为演示
     }
 
-    loadMockData() {
-        this.detailsData = [
-            { category: '食', amount: 85.50, name: '某火锅店', time: '2026-03-01 19:30' },
-            { category: '行', amount: 45.00, name: '滴滴出行', time: '2026-03-01 15:20' },
-            { category: '食', amount: 32.00, name: '咖啡馆', time: '2026-02-28 14:15' },
-        ];
+    updateCharts() {
+        this.drawScoreCircle();
+        this.drawPieChart();
+        this.drawLineChart();
+    }
+
+    renderDetailsList() {
+        const detailsContainer = document.getElementById('detailsList');
+        if (!detailsContainer) return;
+
+        if (this.detailsData.length === 0) {
+            detailsContainer.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">暂无消费记录</p>';
+            return;
+        }
+
+        detailsContainer.innerHTML = this.detailsData
+            .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+            .map((item, idx) => `
+                <div class="detail-item" style="padding:10px;border-bottom:1px solid #f0e6d2;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:600;">${item.merchant || item.name || '未知商家'}</div>
+                        <div style="font-size:12px;color:#999;">${item.date || '未知日期'}</div>
+                        <div style="font-size:12px;color:#999;">${item.details || ''}</div>
+                    </div>
+                    <div style="font-weight:600;color:#d4a574;">${item.amount || 0}元</div>
+                </div>
+            `).join('');
     }
 
     async sendAIMessage() {
