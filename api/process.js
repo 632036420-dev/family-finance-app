@@ -49,14 +49,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        const data = req.body;
+        const data = req.body || {};
         const QWEN_API_KEY = process.env.DASHSCOPE_API_KEY;
         
         const qwenClient = new QwenClient(QWEN_API_KEY);
         const expenses = [];
 
         // 模拟处理多张图片
-        if (Array.isArray(data.images)) {
+        if (Array.isArray(data.images) && data.images.length > 0) {
             for (const image of data.images) {
                 const result = await qwenClient.callVisionAPI(image);
                 if (result.result && result.result.items) {

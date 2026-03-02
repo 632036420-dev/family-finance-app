@@ -200,16 +200,15 @@ class FamilyFinanceApp {
         const backendUrl = this.getBackendUrl();
 
         try {
-            // 使用 FormData 上传多张图片
-            const formData = new FormData();
-            this.images.forEach((img, index) => {
-                formData.append('images', img.file);
-            });
-            formData.append('mode', 'ocr');
+            const payload = {
+                images: this.images.map(img => img.src),
+                mode: 'ocr'
+            };
 
             const response = await fetch(`${backendUrl}/api/process`, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
