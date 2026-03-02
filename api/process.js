@@ -2,35 +2,139 @@
  * Vercel Serverless Function - 图片识别 API
  */
 
-const querystring = require('querystring');
+const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
-// 模拟 Qwen API
-class QwenClient {
-    constructor(apiKey) {
-        this.apiKey = apiKey;
+function ensureDataUrl(imageText) {
+    if (typeof imageText !== 'string') {
+        return null;
     }
 
-    async callVisionAPI(imageBase64Data, prompt = '这是什么账单？请提取其中的消费信息（商家、金额、分类）') {
-        return this.mockVisionResponse(imageBase64Data);
+    const trimmed = imageText.trim();
+    if (!trimmed) {
+        return null;
     }
 
-    mockVisionResponse(imageData) {
-        // 模拟账单识别结果
-        return {
-            status: 'success',
-            result: {
-                items: [
-                    {
-                        merchant: '某火锅店',
-                        amount: 85.50,
-                        category: '食',
-                        date: new Date().toLocaleString('zh-CN'),
-                        details: '火锅消费'
-                    }
-                ]
-            }
-        };
+    if (trimmed.startsWith('data:image/')) {
+        return trimmed;
     }
+
+    return `data:image/jpeg;base64,${trimmed}`;
+}
+
+function extractJsonBlock(text) {
+    if (!text || typeof text !== 'string') {
+        return null;
+    }
+
+    const fenced = text.match(/```json\s*([\s\S]*?)\s*```/i);
+    if (fenced?.[1]) {
+        return fenced[1].trim();
+    }
+
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+        return text.slice(firstBrace, lastBrace + 1).trim();
+    }
+
+    return null;
+}
+
+function normalizeExpense(item) {
+    return {
+        merchant: String(item?.merchant || item?.shop || item?.store || '未知商家'),
+        amount: Number(item?.amount || item?.money || 0),
+        category: String(item?.category || '其他'),
+        date: String(item?.date || item?.time || new Date().toLocaleString('zh-CN')),
+        details: String(item?.details || item?.note || '')
+    };
+}
+
+async function recognizeExpenses({ apiKey, model, images }) {
+    const imageParts = images
+        .map(ensureDataUrl)
+        .filter(Boolean)
+        .map(url => ({ type: 'image_url', image_url: { url } }));
+
+    if (imageParts.length === 0) {
+        throw new Error('未检测到可识别的图片数据');
+    }
+
+    const instruction = [
+        '请识别图片中的消费信息并只输出 JSON，不要解释。',
+        'JSON 格式：{"expenses":[{"merchant":"商家","amount":12.34,"category":"食","date":"YYYY-MM-DD HH:mm","details":"备注"}]}',
+        '如果图片里没有消费记录，返回 {"expenses":[]}。'
+    ].join('\n');
+
+    const response = await fetch(DASHSCOPE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model,
+            temperature: 0.1,
+            messages: [
+                {
+                    role: 'system',
+                    content: '你是票据OCR与结构化抽取助手。'
+                },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: instruction },
+                        ...imageParts
+                    ]
+                }
+            ]
+        })
+    });
+
+    const rawText = await response.text();
+    let payload = null;
+
+    try {
+        payload = rawText ? JSON.parse(rawText) : null;
+    } catch (error) {
+        if (!response.ok) {
+            throw new Error(`图像识别调用失败(${response.status})：${rawText || '无响应内容'}`);
+        }
+        throw new Error('图像识别接口返回了非 JSON 响应');
+    }
+
+    if (!response.ok) {
+        const message = payload?.error?.message || payload?.message || rawText || '未知错误';
+        throw new Error(`图像识别调用失败(${response.status})：${message}`);
+    }
+
+    const content = payload?.choices?.[0]?.message?.content;
+    const contentText = typeof content === 'string'
+        ? content
+        : Array.isArray(content)
+            ? content.map(item => item?.text || '').join('')
+            : '';
+
+    const jsonText = extractJsonBlock(contentText);
+    if (!jsonText) {
+        throw new Error('模型返回中未找到可解析的 JSON');
+    }
+
+    let recognized = null;
+    try {
+        recognized = JSON.parse(jsonText);
+    } catch (error) {
+        throw new Error('模型返回 JSON 解析失败');
+    }
+
+    const expenses = Array.isArray(recognized?.expenses)
+        ? recognized.expenses.map(normalizeExpense)
+        : [];
+
+    return {
+        expenses,
+        usage: payload?.usage || null
+    };
 }
 
 export default async function handler(req, res) {
@@ -50,31 +154,35 @@ export default async function handler(req, res) {
 
     try {
         const data = req.body || {};
-        const QWEN_API_KEY = process.env.DASHSCOPE_API_KEY;
-        
-        const qwenClient = new QwenClient(QWEN_API_KEY);
-        const expenses = [];
+        const apiKey = process.env.DASHSCOPE_API_KEY;
+        const model = process.env.DASHSCOPE_VL_MODEL || process.env.QWEN_VL_MODEL || 'qwen-vl-plus';
 
-        // 模拟处理多张图片
-        if (Array.isArray(data.images) && data.images.length > 0) {
-            for (const image of data.images) {
-                const result = await qwenClient.callVisionAPI(image);
-                if (result.result && result.result.items) {
-                    expenses.push(...result.result.items);
-                }
-            }
-        } else {
-            // 至少处理一张图片
-            const result = await qwenClient.callVisionAPI('mock_image_data');
-            if (result.result && result.result.items) {
-                expenses.push(...result.result.items);
-            }
+        if (!apiKey) {
+            return res.status(500).json({
+                success: false,
+                error: '服务器未配置 DASHSCOPE_API_KEY'
+            });
         }
+
+        if (!Array.isArray(data.images) || data.images.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'images 不能为空'
+            });
+        }
+
+        const result = await recognizeExpenses({
+            apiKey,
+            model,
+            images: data.images
+        });
 
         return res.status(200).json({
             success: true,
-            expenses: expenses,
-            message: `成功识别 ${expenses.length} 条消费记录`
+            expenses: result.expenses,
+            message: `成功识别 ${result.expenses.length} 条消费记录`,
+            model,
+            usage: result.usage
         });
     } catch (error) {
         console.error('处理错误:', error);
