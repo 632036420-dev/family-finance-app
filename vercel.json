@@ -8,8 +8,5 @@
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/", "dest": "/static/index.html" },
     { "src": "/(.*)", "dest": "/static/$1" }
-  ],
-  "env": {
-    "DASHSCOPE_API_KEY": "@dashscope_api_key"
-  }
+  ]
 }
