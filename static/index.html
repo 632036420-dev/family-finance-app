@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭财务管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #fffbf0 0%, #fff9e6 100%);
+            color: #333;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-attachment: fixed;
+        }
+
+        /* 向日葵背景装饰 */
+        body::before {
+            content: '🌻';
+            position: fixed;
+            font-size: 180px;
+            opacity: 0.08;
+            top: -40px;
+            right: -40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '🌻';
+            position: fixed;
+            font-size: 150px;
+            opacity: 0.06;
+            bottom: -20px;
+            left: -30px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 70px;
+            padding-top: 60px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            max-width: 768px;
+            margin: 0 auto;
+            background: white;
+            border-bottom: 1px solid #f0e6d2;
+            padding: 15px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #d4a574;
+            font-weight: 600;
+        }
+
+        /* 标签导航 */
+        .nav-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 768px;
+            margin: 0 auto;
+            display: flex;
+            background: white;
+            border-top: 1px solid #f0e6d2;
+            z-index: 100;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.3s;
+            text-decoration: none;
+            position: relative;
+        }
+
+        .tab-btn::before {
+            content: attr(data-icon);
+            font-size: 24px;
+        }
+
+        .tab-btn.active {
+            color: #d4a574;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 3px;
+            background: #d4a574;
+        }
+
+        /* 页面内容 */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* 上传页面 */
+        .page-upload {
+            padding: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #d4a574;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #fef5e6;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .image-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .preview-item {
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            border: 1px solid #f0e6d2;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item .delete-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 24px;
+            height: 24px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .preview-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #d4a574, #c6956f);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* 总览页面 */
+        .page-overview {
+            padding: 20px;
+        }
+
+        .score-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .score-circle {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+        }
+
+        .score-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            font-weight: 700;
+            color: #d4a574;
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 200px;
+        }
+
+        .ai-analysis {
+            background: linear-gradient(135deg, #fef5e6 0%, #fff9e6 100%);
+            border-left: 4px solid #d4a574;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .copy-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #d4a574;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #c6956f;
+        }
+
+        /* 报表页面 */
+        .page-reports {
+            padding: 20px;
+        }
+
+        .tab-list {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0e6d2;
+        }
+
+        .tab-list::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tab-list::-webkit-scrollbar-thumb {
+            background: #d4a574;
+            border-radius: 2px;
+        }
+
+        .report-tab {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #f0e6d2;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .report-tab.active {
+            background: #d4a574;
+            color: white;
+            border-color: #d4a574;
+        }
+
+        .report-content {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .report-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .report-item:last-child {
+            border-bottom: none;
+        }
+
+        .report-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .report-label {
+            color: #666;
+        }
+
+        .report-value {
+            font-weight: 600;
+            color: #d4a574;
+        }
+
+        /* 明细页面 */
+        .page-details {
+            padding: 20px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #f0e6d2;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: #d4a574;
+            color: white;
+            border-color: #d4a574;
+        }
+
+        .details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .detail-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid #d4a574;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .detail-category {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #fef5e6;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #d4a574;
+            font-weight: 600;
+        }
+
+        .detail-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: #d4a574;
+        }
+
+        .detail-meta {
+            font-size: 12px;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        /* 设置页面 */
+        .page-settings {
+            padding: 20px;
+        }
+
+        .settings-group {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .settings-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-item {
+            margin-bottom: 12px;
+        }
+
+        .settings-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0d4c4;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: #d4a574;
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+        }
+
+        /* AI对话浮窗 */
+        .ai-fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #d4a574, #c6956f);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+            z-index: 50;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .ai-fab:active {
+            transform: scale(0.9);
+        }
+
+        .ai-fab:hover {
+            box-shadow: 0 6px 16px rgba(212, 165, 116, 0.4);
+        }
+
+        .ai-dialog {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            top: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            animation: slideIn 0.3s;
+        }
+
+        .ai-dialog.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .ai-dialog-content {
+            background: white;
+            width: 100%;
+            height: 90%;
+            max-width: 768px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .ai-header {
+            padding: 15px;
+            border-bottom: 1px solid #f0e6d2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .ai-close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-message {
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 85%;
+            word-break: break-word;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .ai-message.user {
+            align-self: flex-end;
+            background: #d4a574;
+            color: white;
+        }
+
+        .ai-message.assistant {
+            align-self: flex-start;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .ai-quick-questions {
+            padding: 10px 15px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            border-top: 1px solid #f0e6d2;
+            background: #fafafa;
+        }
+
+        .quick-question {
+            padding: 8px;
+            background: white;
+            border: 1px solid #e0d4c4;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .quick-question:hover {
+            background: #fef5e6;
+            border-color: #d4a574;
+        }
+
+        .ai-input-area {
+            padding: 12px;
+            border-top: 1px solid #f0e6d2;
+            display: flex;
+            gap: 8px;
+        }
+
+        .ai-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e0d4c4;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .ai-input:focus {
+            outline: none;
+            border-color: #d4a574;
+        }
+
+        .ai-send-btn {
+            width: 40px;
+            height: 40px;
+            background: #d4a574;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .ai-send-btn:hover {
+            background: #c6956f;
+        }
+
+        /* 弹窗通知 */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 300;
+            animation: slideUp 0.3s;
+            text-align: center;
+        }
+
+        @media (min-width: 769px) {
+            body::before {
+                font-size: 240px;
+                top: -60px;
+                right: -60px;
+            }
+
+            body::after {
+                font-size: 200px;
+                bottom: -40px;
+                left: -50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 家庭财务</h1>
+        </div>
+
+        <div class="main-content">
+            <!-- 上传页面 -->
+            <div class="page page-upload active">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">点击上传或拖拽账单截图</div>
+                    <div class="upload-hint">支持多张，自动去重</div>
+                    <input type="file" id="fileInput" multiple accept="image/*">
+                </div>
+                <div class="image-preview" id="imagePreview"></div>
+                <button class="btn-primary" id="submitBtn">识别账单</button>
+            </div>
+
+            <!-- 总览页面 -->
+            <div class="page page-overview">
+                <div class="score-card">
+                    <div class="score-circle">
+                        <canvas id="scoreCanvas" class="score-canvas"></canvas>
+                        <div class="score-text" id="scoreValue">85</div>
+                    </div>
+                    <div>消费健康评分</div>
+                    <div class="score-label">健康的消费习惯</div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">本月消费分布</div>
+                    <canvas id="pieChart" class="chart-canvas"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">日均消费趋势</div>
+                    <canvas id="lineChart" class="chart-canvas"></canvas>
+                </div>
+
+                <div class="ai-analysis">
+                    <strong>📊 AI 财务分析</strong><br>
+                    <p id="aiRecommendation">
+                        根据最近的用度数据分析，你的消费主要集中在餐饮和出行，占比约40%。建议关注非必需开支的控制。
+                    </p>
+                    <button class="copy-btn" id="copyRecommendBtn">复制到剪贴板</button>
+                </div>
+            </div>
+
+            <!-- 报表页面 -->
+            <div class="page page-reports">
+                <div class="tab-list" id="reportTabs">
+                    <button class="report-tab active" data-report="budget">预算追踪</button>
+                    <button class="report-tab" data-report="weekly">按周统计</button>
+                    <button class="report-tab" data-report="monthly">按月统计</button>
+                    <button class="report-tab" data-report="forecast">趋势预测</button>
+                    <button class="report-tab" data-report="savings">储蓄建议</button>
+                </div>
+
+                <div class="report-content" id="reportContent">
+                    <div class="report-item">
+                        <div class="report-row">
+                            <span class="report-label">预算额度</span>
+                            <span class="report-value">5000 元</span>
+                        </div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-row">
+                            <span class="report-label">已用</span>
+                            <span class="report-value">3200 元</span>
+                        </div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-row">
+                            <span class="report-label">剩余</span>
+                            <span class="report-value">1800 元</span>
+                        </div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-row">
+                            <span class="report-label">进度</span>
+                            <span class="report-value">64%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 明细页面 -->
+            <div class="page page-details">
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-category="all">全部</button>
+                    <button class="filter-btn" data-category="food">餐饮</button>
+                    <button class="filter-btn" data-category="transport">出行</button>
+                    <button class="filter-btn" data-category="shopping">购物</button>
+                    <button class="filter-btn" data-category="entertainment">娱乐</button>
+                </div>
+
+                <div class="details-list" id="detailsList">
+                    <div class="detail-item">
+                        <div class="detail-header">
+                            <span class="detail-category">🍽️ 餐饮</span>
+                            <span class="detail-amount">¥85.50</span>
+                        </div>
+                        <div class="detail-meta">
+                            <div>某火锅店</div>
+                            <div>2026-03-01 19:30</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设置页面 -->
+            <div class="page page-settings">
+                <div class="settings-group">
+                    <div class="settings-title">服务器配置</div>
+                    <div class="settings-item">
+                        <label class="settings-label">后端地址</label>
+                        <input type="text" class="settings-input" id="backendUrl" placeholder="https://your-api.example.com">
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-title">财务设置</div>
+                    <div class="settings-item">
+                        <label class="settings-label">月度预算（元）</label>
+                        <input type="number" class="settings-input" id="monthlyBudget" placeholder="5000">
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-title">家庭信息</div>
+                    <div class="settings-item">
+                        <label class="settings-label">月收入（元）</label>
+                        <input type="number" class="settings-input" id="monthlyIncome" placeholder="10000">
+                    </div>
+                    <div class="settings-item">
+                        <label class="settings-label">家庭人数</label>
+                        <input type="number" class="settings-input" id="familyMembers" placeholder="4">
+                    </div>
+                    <div class="settings-item">
+                        <label class="settings-label">所在城市</label>
+                        <input type="text" class="settings-input" id="city" placeholder="北京">
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="saveSettingsBtn">保存设置</button>
+            </div>
+        </div>
+
+        <!-- 导航栏 -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-page="upload" data-icon="📤">上传</button>
+            <button class="tab-btn" data-page="overview" data-icon="📊">总览</button>
+            <button class="tab-btn" data-page="reports" data-icon="📈">报表</button>
+            <button class="tab-btn" data-page="details" data-icon="📋">明细</button>
+            <button class="tab-btn" data-page="settings" data-icon="⚙️">设置</button>
+        </div>
+
+        <!-- AI对话浮窗 -->
+        <button class="ai-fab" id="aiBtn">💬</button>
+
+        <div class="ai-dialog" id="aiDialog">
+            <div class="ai-dialog-content">
+                <div class="ai-header">
+                    <h2>AI财务顾问</h2>
+                    <button class="ai-close-btn" id="aiCloseBtn">×</button>
+                </div>
+
+                <div class="ai-messages" id="aiMessages">
+                    <div class="ai-message assistant">你好！我是AI财务顾问，有什么财务问题我可以帮你解答吗？</div>
+                </div>
+
+                <div class="ai-quick-questions" id="quickQuestions">
+                    <button class="quick-question">如何节省开支？</button>
+                    <button class="quick-question">预算怎么制定？</button>
+                    <button class="quick-question">如何增加收入？</button>
+                    <button class="quick-question">投资建议</button>
+                </div>
+
+                <div class="ai-input-area">
+                    <input type="text" class="ai-input" id="aiInput" placeholder="输入你的问题...">
+                    <button class="ai-send-btn" id="aiSendBtn">→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

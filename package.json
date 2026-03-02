@@ -1,0 +1,28 @@
+{
+  "name": "family-finance-app",
+  "version": "1.0.0",
+  "description": "家庭财务管理应用 - 前后端集成，包含账单识别和AI财务顾问",
+  "main": "cloudfunctions/api/index.js",
+  "scripts": {
+    "start": "node cloudfunctions/api/index.js",
+    "dev": "set DASHSCOPE_API_KEY=YOUR_API_KEY & node cloudfunctions/api/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "家庭财务",
+    "账单识别",
+    "AI顾问",
+    "通义千问"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
