@@ -18,12 +18,17 @@ class FamilyFinanceApp {
     loadSettings() {
         const saved = localStorage.getItem('familySettings');
         return saved ? JSON.parse(saved) : {
-            backendUrl: '',
+            backendUrl: window.location.origin,
             monthlyBudget: 5000,
             monthlyIncome: 10000,
             familyMembers: 4,
             city: '北京'
         };
+    }
+
+    getBackendUrl() {
+        const configuredUrl = (this.settings.backendUrl || '').trim();
+        return configuredUrl || window.location.origin;
     }
 
     saveSettings() {
@@ -32,7 +37,7 @@ class FamilyFinanceApp {
     }
 
     loadSettingsToUI() {
-        document.getElementById('backendUrl').value = this.settings.backendUrl || '';
+        document.getElementById('backendUrl').value = this.settings.backendUrl || window.location.origin;
         document.getElementById('monthlyBudget').value = this.settings.monthlyBudget;
         document.getElementById('monthlyIncome').value = this.settings.monthlyIncome;
         document.getElementById('familyMembers').value = this.settings.familyMembers;
@@ -192,12 +197,7 @@ class FamilyFinanceApp {
 
         this.showToast('正在识别...');
 
-        const backendUrl = this.settings.backendUrl;
-        if (!backendUrl) {
-            this.showToast('请先配置后端地址');
-            this.switchPage('settings');
-            return;
-        }
+        const backendUrl = this.getBackendUrl();
 
         try {
             // 使用 FormData 上传多张图片
@@ -518,11 +518,7 @@ class FamilyFinanceApp {
 
         // 调用AI API
         try {
-            const backendUrl = this.settings.backendUrl;
-            if (!backendUrl) {
-                this.showAIMessage('请先在设置中配置后端地址');
-                return;
-            }
+            const backendUrl = this.getBackendUrl();
 
             const response = await fetch(`${backendUrl}/api/chat`, {
                 method: 'POST',
