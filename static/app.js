@@ -5,6 +5,7 @@ class FamilyFinanceApp {
         this.images = [];
         this.settings = this.loadSettings();
         this.detailsData = [];
+        this.activeCategory = 'all';
         this.init();
     }
 
@@ -135,7 +136,7 @@ class FamilyFinanceApp {
         }
     }
 
-    handleFiles(files) {
+    async handleFiles(files) {
         const imageSet = new Set();
 
         // 获取现有图片的哈希，用于去重
@@ -143,24 +144,15 @@ class FamilyFinanceApp {
             if (img.hash) imageSet.add(img.hash);
         });
 
-        for (let file of files) {
-            if (!file.type.startsWith('image/')) continue;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const hash = this.simpleHash(e.target.result);
-                if (!imageSet.has(hash)) {
-                    this.images.push({
-                        file,
-                        src: e.target.result,
-                        hash
-                    });
-                    imageSet.add(hash);
-                    this.renderPreview();
-                }
-            };
-            reader.readAsDataURL(file);
+        for (const file of files) {
+            const entry = await this.prepareImageEntry(file, imageSet);
+            if (entry) {
+                this.images.push(entry);
+                imageSet.add(entry.hash);
+            }
         }
+
+        this.renderPreview();
     }
 
     simpleHash(str) {
@@ -171,6 +163,102 @@ class FamilyFinanceApp {
             hash = hash & hash;
         }
         return hash.toString();
+    }
+
+    readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('读取图片失败'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    compressImageDataUrl(dataUrl, maxSize = 1280, quality = 0.78) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+                const ratio = Math.min(maxSize / image.width, maxSize / image.height, 1);
+                const targetWidth = Math.round(image.width * ratio);
+                const targetHeight = Math.round(image.height * ratio);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, targetWidth, targetHeight);
+                ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            image.onerror = () => reject(new Error('图片加载失败'));
+            image.src = dataUrl;
+        });
+    }
+
+    async prepareImageEntry(file, imageSet) {
+        if (!file.type.startsWith('image/')) return null;
+
+        const originalDataUrl = await this.readFileAsDataUrl(file);
+        const hash = this.simpleHash(originalDataUrl);
+        if (imageSet.has(hash)) return null;
+
+        const compressedDataUrl = await this.compressImageDataUrl(originalDataUrl);
+
+        return {
+            file,
+            src: compressedDataUrl,
+            uploadSrc: compressedDataUrl,
+            hash
+        };
+    }
+
+    normalizeCategory(rawCategory) {
+        const text = String(rawCategory || '').toLowerCase();
+
+        if (['食', '餐饮', '美食', '外卖', '饭', 'food', 'dining'].some(key => text.includes(key))) {
+            return 'food';
+        }
+
+        if (['出行', '交通', '地铁', '公交', '打车', 'transport', 'travel'].some(key => text.includes(key))) {
+            return 'transport';
+        }
+
+        if (['购物', '商超', '超市', '便利', 'shopping', 'store', 'mall'].some(key => text.includes(key))) {
+            return 'shopping';
+        }
+
+        if (['娱乐', '休闲', '电影', '游戏', 'entertain', 'game'].some(key => text.includes(key))) {
+            return 'entertainment';
+        }
+
+        return 'other';
+    }
+
+    getCategoryMeta(rawCategory, categoryKey) {
+        const key = categoryKey || this.normalizeCategory(rawCategory);
+        const metaMap = {
+            food: { label: '餐饮', icon: '🍽️' },
+            transport: { label: '出行', icon: '🚌' },
+            shopping: { label: '购物', icon: '🛍️' },
+            entertainment: { label: '娱乐', icon: '🎬' },
+            other: { label: '其他', icon: '📌' }
+        };
+
+        return { key, ...(metaMap[key] || metaMap.other) };
+    }
+
+    enrichExpense(item) {
+        const meta = this.getCategoryMeta(item?.category, item?.categoryKey);
+        return {
+            ...item,
+            amount: Number(item?.amount || 0),
+            categoryKey: meta.key,
+            categoryLabel: meta.label,
+            categoryIcon: meta.icon
+        };
     }
 
     renderPreview() {
@@ -204,7 +292,7 @@ class FamilyFinanceApp {
 
         try {
             const payload = {
-                images: this.images.map(img => img.src),
+                images: this.images.map(img => img.uploadSrc || img.src),
                 mode: 'ocr'
             };
 
@@ -214,21 +302,32 @@ class FamilyFinanceApp {
                 body: JSON.stringify(payload)
             });
 
-            const result = await response.json();
+            const rawText = await response.text();
+            let result = null;
+            try {
+                result = rawText ? JSON.parse(rawText) : null;
+            } catch (error) {
+                throw new Error('后端返回不是 JSON');
+            }
 
-            if (result.success) {
-                this.detailsData.push(...result.expenses);
+            if (!response.ok) {
+                throw new Error(result?.error || `识别失败(${response.status})`);
+            }
+
+            if (result?.success) {
+                const expenses = Array.isArray(result.expenses) ? result.expenses : [];
+                this.detailsData.push(...expenses.map(item => this.enrichExpense(item)));
                 this.images = [];
                 this.renderPreview();
                 this.updateCharts();
                 this.showToast('识别成功！');
                 this.switchPage('overview');
             } else {
-                this.showToast(result.error || '识别失败');
+                this.showToast(result?.error || '识别失败');
             }
         } catch (error) {
             console.error('错误:', error);
-            this.showToast('网络错误，请检查后端地址');
+            this.showToast(error.message || '网络错误，请检查后端地址');
         }
     }
 
@@ -272,7 +371,8 @@ class FamilyFinanceApp {
 
         const categoryMap = {};
         this.detailsData.forEach(item => {
-            const cat = item.category || '其他';
+            const meta = this.getCategoryMeta(item.category, item.categoryKey);
+            const cat = item.categoryLabel || meta.label;
             categoryMap[cat] = (categoryMap[cat] || 0) + item.amount;
         });
 
@@ -506,8 +606,8 @@ class FamilyFinanceApp {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-category="${category}"]`).classList.add('active');
 
-        // 实际应用中应根据分类过滤
-        // 这里仅为演示
+        this.activeCategory = category;
+        this.renderDetailsList();
     }
 
     updateCharts() {
@@ -520,23 +620,36 @@ class FamilyFinanceApp {
         const detailsContainer = document.getElementById('detailsList');
         if (!detailsContainer) return;
 
-        if (this.detailsData.length === 0) {
+        const filteredData = this.activeCategory === 'all'
+            ? this.detailsData
+            : this.detailsData.filter(item => {
+                const key = item.categoryKey || this.normalizeCategory(item.category);
+                return key === this.activeCategory;
+            });
+
+        if (filteredData.length === 0) {
             detailsContainer.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">暂无消费记录</p>';
             return;
         }
 
-        detailsContainer.innerHTML = this.detailsData
+        detailsContainer.innerHTML = filteredData
             .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-            .map((item, idx) => `
-                <div class="detail-item" style="padding:10px;border-bottom:1px solid #f0e6d2;display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-weight:600;">${item.merchant || item.name || '未知商家'}</div>
-                        <div style="font-size:12px;color:#999;">${item.date || '未知日期'}</div>
-                        <div style="font-size:12px;color:#999;">${item.details || ''}</div>
+            .map(item => {
+                const meta = this.getCategoryMeta(item.category, item.categoryKey);
+                return `
+                <div class="detail-item">
+                    <div class="detail-header">
+                        <span class="detail-category">${meta.icon} ${item.categoryLabel || meta.label}</span>
+                        <span class="detail-amount">¥${Number(item.amount || 0).toFixed(2)}</span>
                     </div>
-                    <div style="font-weight:600;color:#d4a574;">${item.amount || 0}元</div>
+                    <div class="detail-meta">
+                        <div>${item.merchant || item.name || '未知商家'}</div>
+                        <div>${item.date || '未知日期'}</div>
+                        ${item.details ? `<div>${item.details}</div>` : ''}
+                    </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
     }
 
     async sendAIMessage() {

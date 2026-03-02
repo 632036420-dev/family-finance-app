@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家庭财务管理</title>
+    <title>C&X Family</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap');
+
+        :root {
+            --sunflower-gold: #d4a574;
+            --sunflower-bright: #f2c66d;
+            --sunflower-ink: rgba(212, 165, 116, 0.12);
+            --cream: #fff9e6;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,8 +21,14 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #fffbf0 0%, #fff9e6 100%);
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--cream);
+            background-image:
+                linear-gradient(135deg, #fffbf0 0%, #fff2d9 100%),
+                url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%20viewBox%3D%220%200%20180%20180%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23f2c66d%22%20stroke-width%3D%223%22%20opacity%3D%220.35%22%3E%3Ccircle%20cx%3D%2290%22%20cy%3D%2290%22%20r%3D%2216%22%20fill%3D%22%23f3b12b%22/%3E%3Cpath%20d%3D%22M90%2010c12%200%2022%2010%2022%2022S102%2054%2090%2054%2068%2044%2068%2032%2078%2010%2090%2010z%22/%3E%3Cpath%20d%3D%22M170%2090c0%2012-10%2022-22%2022s-22-10-22-22%2010-22%2022-22%2022%2010%2022%2022z%22/%3E%3Cpath%20d%3D%22M90%20170c-12%200-22-10-22-22s10-22%2022-22%2022%2010%2022%2022-10%2022-22%2022z%22/%3E%3Cpath%20d%3D%22M10%2090c0-12%2010-22%2022-22s22%2010%2022%2022-10%2022-22%2022S10%20102%2010%2090z%22/%3E%3Cpath%20d%3D%22M140%2040c8%208%208%2020%200%2028s-20%208-28%200-8-20%200-28%2020-8%2028%200z%22/%3E%3Cpath%20d%3D%22M40%2040c8-8%2020-8%2028%200s8%2020%200%2028-20%208-28%200-8-20%200-28z%22/%3E%3Cpath%20d%3D%22M140%20140c-8%208-20%208-28%200s-8-20%200-28%2020-8%2028%200%208%2020%200%2028z%22/%3E%3Cpath%20d%3D%22M40%20140c-8-8-8-20%200-28s20-8%2028%200%208%2020%200%2028-20%208-28%200z%22/%3E%3C/g%3E%3C/svg%3E"),
+                radial-gradient(circle at 20% 10%, rgba(255, 218, 150, 0.35) 0%, rgba(255, 218, 150, 0.0) 45%);
+            background-size: cover, 220px 220px, 420px 420px;
+            background-repeat: no-repeat, repeat, no-repeat;
             color: #333;
             min-height: 100vh;
             overflow-x: hidden;
@@ -78,8 +93,9 @@
 
         .header h1 {
             font-size: 24px;
-            color: #d4a574;
+            color: var(--sunflower-gold);
             font-weight: 600;
+            font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
         }
 
         /* 标签导航 */
@@ -762,7 +778,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>💰 家庭财务</h1>
+                    <h1>🌻 C&X Family</h1>
         </div>
 
         <div class="main-content">
