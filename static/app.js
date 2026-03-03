@@ -228,20 +228,52 @@ class FamilyFinanceApp {
     normalizeCategory(rawCategory) {
         const text = String(rawCategory || '').toLowerCase();
 
-        if (['食', '餐饮', '美食', '外卖', '饭', 'food', 'dining'].some(key => text.includes(key))) {
+        if (['食', '餐饮', '美食', '外卖', '饭', '吃', '餐厅', '食堂', '快餐', '火锅', '咖啡', '奶茶', '小吃', 'food', 'dining', 'restaurant', 'cafe'].some(key => text.includes(key))) {
             return 'food';
         }
 
-        if (['出行', '交通', '地铁', '公交', '打车', 'transport', 'travel'].some(key => text.includes(key))) {
+        if (['出行', '交通', '地铁', '公交', '打车', '滴滴', '加油', '停车', '高铁', '飞机', '车票', '油费', 'transport', 'travel', 'taxi', 'uber', 'didi'].some(key => text.includes(key))) {
             return 'transport';
         }
 
-        if (['购物', '商超', '超市', '便利', 'shopping', 'store', 'mall'].some(key => text.includes(key))) {
+        if (['购物', '商超', '超市', '便利', '商场', '百货', '淘宝', '京东', '网购', '拼多多', 'shopping', 'store', 'mall', 'taobao'].some(key => text.includes(key))) {
             return 'shopping';
         }
 
-        if (['娱乐', '休闲', '电影', '游戏', 'entertain', 'game'].some(key => text.includes(key))) {
+        if (['娱乐', '休闲', '电影', '游戏', '酒吧', '旅游', 'ktv', '唱歌', '玩乐', 'entertain', 'game', 'movie', 'bar'].some(key => text.includes(key))) {
             return 'entertainment';
+        }
+
+        if (['医疗', '医院', '药店', '体检', '看病', '就医', '挂号', '诊所', '门诊', 'medical', 'hospital', 'doctor', 'clinic'].some(key => text.includes(key))) {
+            return 'medical';
+        }
+
+        if (['教育', '培训', '学费', '书籍', '课程', '学习', '考试', '辅导', '教材', 'education', 'training', 'course', 'book'].some(key => text.includes(key))) {
+            return 'education';
+        }
+
+        if (['住房', '房租', '物业', '水电', '燃气', '水费', '电费', '宽带', '网费', 'housing', 'rent', 'utility', 'bill'].some(key => text.includes(key))) {
+            return 'housing';
+        }
+
+        if (['通讯', '话费', '流量', '充值', '手机', '电信', '移动', '联通', 'telecom', 'mobile', 'phone'].some(key => text.includes(key))) {
+            return 'telecom';
+        }
+
+        if (['服饰', '衣服', '鞋子', '包包', '配饰', '服装', '鞋', '衣', 'clothing', 'clothes', 'shoes', 'fashion'].some(key => text.includes(key))) {
+            return 'clothing';
+        }
+
+        if (['美容', '美发', '化妆品', '护肤', '美甲', 'spa', '理发', '美妆', 'beauty', 'cosmetic', 'salon'].some(key => text.includes(key))) {
+            return 'beauty';
+        }
+
+        if (['运动', '健身', '瑜伽', '游泳', '体育', '器材', '跑步', 'fitness', 'gym', 'sport', 'yoga'].some(key => text.includes(key))) {
+            return 'sports';
+        }
+
+        if (['家居', '家具', '家电', '日用品', '装修', '维修', '家用', 'home', 'furniture', 'appliance'].some(key => text.includes(key))) {
+            return 'home';
         }
 
         return 'other';
@@ -251,9 +283,17 @@ class FamilyFinanceApp {
         const key = categoryKey || this.normalizeCategory(rawCategory);
         const metaMap = {
             food: { label: '餐饮', icon: '🍽️' },
-            transport: { label: '出行', icon: '🚌' },
+            transport: { label: '交通', icon: '🚌' },
             shopping: { label: '购物', icon: '🛍️' },
             entertainment: { label: '娱乐', icon: '🎬' },
+            medical: { label: '医疗', icon: '💊' },
+            education: { label: '教育', icon: '📚' },
+            housing: { label: '住房', icon: '🏠' },
+            telecom: { label: '通讯', icon: '📱' },
+            clothing: { label: '服饰', icon: '👔' },
+            beauty: { label: '美容', icon: '💄' },
+            sports: { label: '运动', icon: '⚽' },
+            home: { label: '家居', icon: '🛋️' },
             other: { label: '其他', icon: '📌' }
         };
 

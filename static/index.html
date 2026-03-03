@@ -442,6 +442,21 @@
             margin-bottom: 20px;
             overflow-x: auto;
             padding-bottom: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--sunflower-gold) transparent;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .filter-bar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .filter-bar::-webkit-scrollbar-thumb {
+            background: var(--sunflower-gold);
+            border-radius: 2px;
         }
 
         .filter-btn {
@@ -453,6 +468,7 @@
             white-space: nowrap;
             cursor: pointer;
             transition: all 0.3s;
+            flex-shrink: 0;
         }
 
         .filter-btn.active {
@@ -866,10 +882,18 @@
             <div class="page page-details">
                 <div class="filter-bar">
                     <button class="filter-btn active" data-category="all">全部</button>
-                    <button class="filter-btn" data-category="food">餐饮</button>
-                    <button class="filter-btn" data-category="transport">出行</button>
-                    <button class="filter-btn" data-category="shopping">购物</button>
-                    <button class="filter-btn" data-category="entertainment">娱乐</button>
+                    <button class="filter-btn" data-category="food">🍽️ 餐饮</button>
+                    <button class="filter-btn" data-category="transport">🚌 交通</button>
+                    <button class="filter-btn" data-category="shopping">🛍️ 购物</button>
+                    <button class="filter-btn" data-category="entertainment">🎬 娱乐</button>
+                    <button class="filter-btn" data-category="medical">💊 医疗</button>
+                    <button class="filter-btn" data-category="education">📚 教育</button>
+                    <button class="filter-btn" data-category="housing">🏠 住房</button>
+                    <button class="filter-btn" data-category="telecom">📱 通讯</button>
+                    <button class="filter-btn" data-category="clothing">👔 服饰</button>
+                    <button class="filter-btn" data-category="beauty">💄 美容</button>
+                    <button class="filter-btn" data-category="sports">⚽ 运动</button>
+                    <button class="filter-btn" data-category="home">🛋️ 家居</button>
                 </div>
 
                 <div class="details-list" id="detailsList">
