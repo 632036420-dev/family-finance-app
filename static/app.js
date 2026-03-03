@@ -46,6 +46,12 @@ class FamilyFinanceApp {
     }
 
     setupEventListeners() {
+        // 导出 Excel
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToExcel());
+        }
+
         // 标签页切换
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.switchPage(e.target.closest('[data-page]').dataset.page));
@@ -613,26 +619,6 @@ class FamilyFinanceApp {
                     </div>
                 </div>
             `,
-            savings: `
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">建议储蓄率</span>
-                        <span class="report-value">20%</span>
-                    </div>
-                </div>
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">月储蓄目标</span>
-                        <span class="report-value">${savingsTarget.toFixed(2)} 元</span>
-                    </div>
-                </div>
-                <div class="report-item">
-                    <div class="report-row">
-                        <span class="report-label">预计本月储蓄</span>
-                        <span class="report-value">${savings.toFixed(2)} 元</span>
-                    </div>
-                </div>
-            `,
             category: `
                 <div class="report-item">
                     ${this.detailsData.length > 0 ? 
@@ -761,6 +747,41 @@ class FamilyFinanceApp {
         assistantMsgDiv.textContent = text;
         messagesContainer.appendChild(assistantMsgDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    exportToExcel() {
+        if (this.detailsData.length === 0) {
+            this.showToast('暂无数据可导出');
+            return;
+        }
+
+        const headers = ['商户名称', '消费金额', '分类', '消费日期', '备注'];
+        const rows = this.detailsData.map(item => [
+            item.merchant || item.name || '未知商家',
+            item.amount || 0,
+            item.categoryLabel || item.category || '其他',
+            item.date || '未知日期',
+            item.details || ''
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `家庭消费明细_${timestamp}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.showToast('导出成功！');
     }
 
     showToast(message) {
