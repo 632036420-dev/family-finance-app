@@ -60,7 +60,11 @@ async function recognizeExpenses({ apiKey, model, images }) {
         throw new Error('未检测到可识别的图片数据');
     }
 
-    const instruction = '仅返回 JSON：{"expenses":[{"merchant":"","amount":0,"category":"","date":"","details":""}]}; 无记录则 {"expenses":[]}';
+    const instruction = [
+        '请识别图片中的消费信息并只输出 JSON，不要解释。',
+        'JSON 格式：{"expenses":[{"merchant":"商家","amount":12.34,"category":"食","date":"YYYY-MM-DD HH:mm","details":"备注"}]}',
+        '如果图片里没有消费记录，返回 {"expenses":[]}。'
+    ].join('\n');
 
     const response = await fetch(DASHSCOPE_URL, {
         method: 'POST',
@@ -72,11 +76,10 @@ async function recognizeExpenses({ apiKey, model, images }) {
             model,
             temperature: 0,
             max_tokens: 300,
-            response_format: { type: 'json_object' },
             messages: [
                 {
                     role: 'system',
-                    content: '你是OCR结构化提取器，只输出JSON。'
+                    content: '你是票据OCR与结构化抽取助手。'
                 },
                 {
                     role: 'user',
