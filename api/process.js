@@ -134,7 +134,7 @@ async function recognizeExpenses({ apiKey, model, images }) {
     try {
         recognized = JSON.parse(jsonText);
     } catch (error) {
-        throw new Error('模型返回 JSON 解析失败');
+        throw new Error(`模型返回 JSON 解析失败：${jsonText.slice(0, 200)}`);
     }
 
     const expenses = Array.isArray(recognized?.expenses)
