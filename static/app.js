@@ -6,6 +6,7 @@ class FamilyFinanceApp {
         this.settings = this.loadSettings();
         this.detailsData = [];
         this.activeCategory = 'all';
+        this.pendingRecognitionCount = 0;
         this.init();
     }
 
@@ -294,17 +295,23 @@ class FamilyFinanceApp {
             this.showToast('请先选择图片');
             return;
         }
-
-        this.showToast('正在识别...');
-
         const backendUrl = this.getBackendUrl();
+        const payload = {
+            images: this.images.map(img => img.uploadSrc || img.src),
+            mode: 'ocr'
+        };
 
+        this.images = [];
+        this.renderPreview();
+        this.pendingRecognitionCount += 1;
+        this.showToast(`已提交识别任务（进行中 ${this.pendingRecognitionCount}）`);
+        this.switchPage('overview');
+
+        this.runRecognitionInBackground(backendUrl, payload);
+    }
+
+    async runRecognitionInBackground(backendUrl, payload) {
         try {
-            const payload = {
-                images: this.images.map(img => img.uploadSrc || img.src),
-                mode: 'ocr'
-            };
-
             const response = await fetch(`${backendUrl}/api/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -326,17 +333,21 @@ class FamilyFinanceApp {
             if (result?.success) {
                 const expenses = Array.isArray(result.expenses) ? result.expenses : [];
                 this.detailsData.push(...expenses.map(item => this.enrichExpense(item)));
-                this.images = [];
-                this.renderPreview();
                 this.updateCharts();
-                this.showToast('识别成功！');
-                this.switchPage('overview');
+
+                if (this.currentPage === 'details') {
+                    this.renderDetailsList();
+                }
+
+                this.showToast(`识别完成，新增 ${expenses.length} 条记录`);
             } else {
                 this.showToast(result?.error || '识别失败');
             }
         } catch (error) {
             console.error('错误:', error);
             this.showToast(error.message || '网络错误，请检查后端地址');
+        } finally {
+            this.pendingRecognitionCount = Math.max(0, this.pendingRecognitionCount - 1);
         }
     }
 
