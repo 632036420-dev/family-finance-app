@@ -72,6 +72,7 @@ async function recognizeExpenses({ apiKey, model, images }) {
             model,
             temperature: 0,
             max_tokens: 300,
+            response_format: { type: 'json_object' },
             messages: [
                 {
                     role: 'system',
@@ -106,10 +107,19 @@ async function recognizeExpenses({ apiKey, model, images }) {
     }
 
     const content = payload?.choices?.[0]?.message?.content;
+
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+        const directExpenses = Array.isArray(content?.expenses) ? content.expenses.map(normalizeExpense) : [];
+        return {
+            expenses: directExpenses,
+            usage: payload?.usage || null
+        };
+    }
+
     const contentText = typeof content === 'string'
         ? content
         : Array.isArray(content)
-            ? content.map(item => item?.text || '').join('')
+            ? content.map(item => item?.text || (typeof item === 'object' ? JSON.stringify(item) : '')).join('')
             : '';
 
     const jsonText = extractJsonBlock(contentText);
