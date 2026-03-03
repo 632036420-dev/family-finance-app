@@ -144,13 +144,13 @@ class FamilyFinanceApp {
             if (img.hash) imageSet.add(img.hash);
         });
 
-        for (const file of files) {
-            const entry = await this.prepareImageEntry(file, imageSet);
-            if (entry) {
+        const entries = await Promise.all(Array.from(files).map(file => this.prepareImageEntry(file, imageSet)));
+        entries.filter(Boolean).forEach(entry => {
+            if (!imageSet.has(entry.hash)) {
                 this.images.push(entry);
                 imageSet.add(entry.hash);
             }
-        }
+        });
 
         this.renderPreview();
     }
@@ -174,7 +174,7 @@ class FamilyFinanceApp {
         });
     }
 
-    compressImageDataUrl(dataUrl, maxSize = 1280, quality = 0.78) {
+    compressImageDataUrl(dataUrl, maxSize = 960, quality = 0.62) {
         return new Promise((resolve, reject) => {
             const image = new Image();
             image.onload = () => {
@@ -191,7 +191,13 @@ class FamilyFinanceApp {
                 ctx.fillRect(0, 0, targetWidth, targetHeight);
                 ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-                resolve(canvas.toDataURL('image/jpeg', quality));
+                let compressed = canvas.toDataURL('image/jpeg', quality);
+
+                if (compressed.length > 350000) {
+                    compressed = canvas.toDataURL('image/jpeg', 0.5);
+                }
+
+                resolve(compressed);
             };
             image.onerror = () => reject(new Error('图片加载失败'));
             image.src = dataUrl;
@@ -201,8 +207,11 @@ class FamilyFinanceApp {
     async prepareImageEntry(file, imageSet) {
         if (!file.type.startsWith('image/')) return null;
 
+        const fastHash = `${file.name}-${file.size}-${file.lastModified}`;
+        if (imageSet.has(fastHash)) return null;
+
         const originalDataUrl = await this.readFileAsDataUrl(file);
-        const hash = this.simpleHash(originalDataUrl);
+        const hash = this.simpleHash(originalDataUrl.slice(0, 6000));
         if (imageSet.has(hash)) return null;
 
         const compressedDataUrl = await this.compressImageDataUrl(originalDataUrl);
