@@ -61,7 +61,7 @@ async function recognizeExpenses({ apiKey, model, images }) {
     }
 
     const instruction = [
-        '请识别图片中的消费信息并只输出 JSON，不要解释。',
+        '请识别图片中的消费信息并只输出紧凑 JSON（单行，不要换行，不要解释）。',
         'JSON 格式：{"expenses":[{"merchant":"商家","amount":12.34,"category":"食","date":"YYYY-MM-DD HH:mm","details":"备注"}]}',
         '如果图片里没有消费记录，返回 {"expenses":[]}。'
     ].join('\n');
@@ -75,7 +75,7 @@ async function recognizeExpenses({ apiKey, model, images }) {
         body: JSON.stringify({
             model,
             temperature: 0,
-            max_tokens: 300,
+            max_tokens: 1200,
             messages: [
                 {
                     role: 'system',
@@ -134,7 +134,7 @@ async function recognizeExpenses({ apiKey, model, images }) {
     try {
         recognized = JSON.parse(jsonText);
     } catch (error) {
-        throw new Error(`模型返回 JSON 解析失败：${jsonText.slice(0, 200)}`);
+        throw new Error('模型返回 JSON 解析失败');
     }
 
     const expenses = Array.isArray(recognized?.expenses)
